@@ -38,19 +38,7 @@ jobs:
 
     - name: Build EXE
       run: |
-        pyinstaller --onefile --windowed --name "JapaneseAudioSearch" ^
-          --add-data "README.md;." ^
-          --hidden-import vlc ^
-          --hidden-import tkinter ^
-          --hidden-import sqlite3 ^
-          --hidden-import threading ^
-          --hidden-import queue ^
-          --hidden-import webbrowser ^
-          --collect-all vlc ^
-          --exclude-module matplotlib ^
-          --exclude-module numpy ^
-          --exclude-module pandas ^
-          launcher.py
+        pyinstaller --onefile --windowed --name "JapaneseAudioSearch" --add-data "README.md;." --hidden-import vlc --hidden-import tkinter --hidden-import sqlite3 --hidden-import threading --hidden-import queue --hidden-import webbrowser --collect-all vlc --exclude-module matplotlib --exclude-module numpy --exclude-module pandas launcher.py
 
     - name: Test EXE
       run: |
