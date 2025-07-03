@@ -1,0 +1,165 @@
+name: Build Standalone EXE
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller>=5.13.0
+        pip install yt-dlp>=2023.7.6
+        pip install python-vlc>=3.0.12118
+
+    - name: Create launcher
+      run: |
+        echo 'import sys; import os' > launcher.py
+        echo 'if hasattr(sys, "_MEIPASS"): os.chdir(sys._MEIPASS)' >> launcher.py  
+        echo 'else: os.chdir(os.path.dirname(os.path.abspath(__file__)))' >> launcher.py
+        echo 'from main import main' >> launcher.py
+        echo 'if __name__ == "__main__":' >> launcher.py
+        echo '    if len(sys.argv) == 1: sys.argv.append("gui")' >> launcher.py
+        echo '    main()' >> launcher.py
+
+    - name: Build EXE
+      run: |
+        pyinstaller --onefile --windowed --name "JapaneseAudioSearch" ^
+          --add-data "README.md;." ^
+          --hidden-import vlc ^
+          --hidden-import tkinter ^
+          --hidden-import sqlite3 ^
+          --hidden-import threading ^
+          --hidden-import queue ^
+          --hidden-import webbrowser ^
+          --collect-all vlc ^
+          --exclude-module matplotlib ^
+          --exclude-module numpy ^
+          --exclude-module pandas ^
+          launcher.py
+
+    - name: Test EXE
+      run: |
+        dist\JapaneseAudioSearch.exe --help
+      continue-on-error: true
+
+    - name: Create user README
+      run: |
+        echo "# Japanese Audio Search" > dist\README.txt
+        echo "" >> dist\README.txt
+        echo "## Quick Start:" >> dist\README.txt
+        echo "1. Double-click JapaneseAudioSearch.exe" >> dist\README.txt
+        echo "2. GUI will open automatically" >> dist\README.txt
+        echo "3. Search for Japanese videos and learn!" >> dist\README.txt
+        echo "" >> dist\README.txt
+        echo "## Features:" >> dist\README.txt
+        echo "- Search YouTube videos" >> dist\README.txt
+        echo "- Download Japanese subtitles" >> dist\README.txt
+        echo "- Search words in subtitle database" >> dist\README.txt
+        echo "- Built-in video player" >> dist\README.txt
+        echo "- Auto-jump to word timestamps" >> dist\README.txt
+
+    - name: Get file size
+      run: |
+        $size = (Get-Item "dist\JapaneseAudioSearch.exe").Length / 1MB
+        echo "EXE_SIZE=$([math]::Round($size, 1))" >> $env:GITHUB_ENV
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/JapaneseAudioSearch.exe
+          dist/README.txt
+        body: |
+          # 🎌 Japanese Audio Search - ${{ github.ref_name }}
+          
+          **Single-click Japanese learning app! No installation required.**
+          
+          ## 📥 Download & Run
+          
+          1. **Download**: [JapaneseAudioSearch.exe](${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}/JapaneseAudioSearch.exe) (Size: ${{ env.EXE_SIZE }}MB)
+          2. **Run**: Double-click the .exe file
+          3. **Learn**: GUI opens automatically!
+          
+          ## ✨ What's Inside
+          
+          - ✅ **Complete Python environment** - no Python installation needed
+          - ✅ **All dependencies included** - yt-dlp, VLC player, etc.
+          - ✅ **Built-in video player** - watch YouTube directly in app
+          - ✅ **Offline database** - your subtitle data stays local
+          - ✅ **Cross-platform** - Windows 10/11 supported
+          
+          ## 🚀 Quick Start Guide
+          
+          ```
+          1. Download JapaneseAudioSearch.exe
+          2. Double-click to run (no installation!)
+          3. In the GUI:
+             - Search: "japanese n1"
+             - Click: "Search Videos" 
+             - Click: "Download Subtitles"
+             - Search word: "ありがとう"
+             - Double-click result to play video!
+          ```
+          
+          ## 🎯 Perfect For
+          
+          - 📚 **Japanese learners** at any level
+          - 🎌 **JLPT preparation** (N5 to N1)
+          - 🗣️ **Conversation practice** with real content
+          - 📖 **Vocabulary building** in context
+          - 🎧 **Listening comprehension** training
+          
+          ## 🔒 Privacy & Security
+          
+          - ✅ **No data collection** - everything stays on your computer
+          - ✅ **Open source** - code available on GitHub
+          - ✅ **Offline database** - your learning data is private
+          - ✅ **YouTube API only** - just searches and downloads subtitles
+          
+          ## 🆘 Troubleshooting
+          
+          **Antivirus blocking the file?**
+          - This is normal for new executables
+          - Add exception or whitelist the file
+          - Download only from GitHub releases
+          
+          **App won't start?**
+          - Make sure you have internet connection
+          - Try "Run as administrator"
+          - Check Windows Defender SmartScreen
+          
+          **Video player issues?**
+          - Videos will open in browser as fallback
+          - Built-in player requires internet connection
+          
+          ---
+          
+          **🎉 Happy Japanese Learning! Download and start immediately! 🎌**
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload artifact (for testing)
+      uses: actions/upload-artifact@v3
+      with:
+        name: JapaneseAudioSearch-EXE
+        path: |
+          dist/JapaneseAudioSearch.exe
+          dist/README.txt
